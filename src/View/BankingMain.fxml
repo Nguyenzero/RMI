@@ -42,7 +42,7 @@
                     style="-fx-background-color: #10b981; -fx-text-fill: white; -fx-background-radius: 8;"/>
             <Button text="Đăng ký" onAction="#onRegister"
                     style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-background-radius: 8;"/>
-            <Button text="Đăng xuất" onAction="#onDisconnectServer"
+            <Button text="Đăng xuất" onAction="#onLogout"
                     style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-background-radius: 8;"/>
 
         </HBox>
@@ -63,21 +63,13 @@
                            style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #1e293b;"/>
 
                     <!-- Thông tin tài khoản -->
-                    <VBox spacing="10" alignment="CENTER">
-                        <HBox spacing="10" alignment="CENTER">
-                            <Label text="Chủ tài khoản:"
-                                   style="-fx-font-weight: bold; -fx-text-fill: #334155;"/>
-                            <Label fx:id="lblAccountNumber"
-                                   style="-fx-font-weight: bold; -fx-text-fill: #1d4ed8;"/>
-                        </HBox>
-
-                        <HBox spacing="10" alignment="CENTER">
-                            <Label text="Số dư hiện tại:"
-                                   style="-fx-font-weight: bold; -fx-text-fill: #334155;"/>
-                            <Label fx:id="lblBalance"
-                                   style="-fx-font-weight: bold; -fx-text-fill: #16a34a; -fx-font-size: 15px;"/>
-                        </HBox>
+                    <VBox fx:id="accountInfoPane" spacing="10" visible="false">
+                        <Label text="Mã tài khoản:"/>
+                        <Label fx:id="lblAccountNumber"/>
+                        <Label text="Số dư:"/>
+                        <Label fx:id="lblBalance"/>
                     </VBox>
+
 
                     <Separator prefWidth="400"/>
 
