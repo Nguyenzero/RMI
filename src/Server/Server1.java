@@ -8,7 +8,7 @@ import java.util.*;
 public class Server1 {
     private static final int PORT = 5000;
     private static final int SYNC_PORT = 12345;
-    private static final String SYNC_SERVER_IP = "192.168.1.102";
+    private static final String SYNC_SERVER_IP = "192.168.23.101";
     private static final int SYNC_SERVER_PORT = 12346;
 
     public static void main(String[] args) {
@@ -87,11 +87,18 @@ public class Server1 {
 
                     case "TRANSFER" -> {
                         double amt = Double.parseDouble(p[3]);
+
+                        if (!UserDAO.exists(p[2])) {
+                            out.println("FAIL_RECEIVER");
+                            break;
+                        }
+
                         double bal = UserDAO.getBalance(p[1], "Server1");
                         if (bal < amt) {
                             out.println("FAIL_FUNDS");
                             break;
                         }
+
                         UserDAO.transfer(p[1], p[2], amt);
                         out.println("BAL " + (bal - amt));
                         syncToServer("TRANSFER " + p[1] + " " + p[2] + " " + amt);
@@ -102,6 +109,17 @@ public class Server1 {
                         out.println("OK");
                         syncToServer("LOGOUT " + p[1]);
                     }
+                    case "LIST_USERS" -> {
+                        StringBuilder sb = new StringBuilder("USERS ");
+                        List<String> allUsers = UserDAO.getAllUsers(); // cần viết thêm trong UserDAO
+                        for (String u : allUsers) {
+                            sb.append(u).append(",");
+                        }
+                        if (sb.charAt(sb.length() - 1) == ',') sb.deleteCharAt(sb.length() - 1);
+                        out.println(sb.toString());
+                    }
+
+
 
                     default -> out.println("INVALID");
                 }

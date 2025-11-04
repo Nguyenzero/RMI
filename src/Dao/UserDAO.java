@@ -1,6 +1,8 @@
     package Dao;
 
     import java.sql.*;
+    import java.util.ArrayList;
+    import java.util.List;
 
     public class UserDAO {
 
@@ -91,11 +93,47 @@
             }
         }
 
-        public static void transfer(String from, String to, double amt) {
-            double fromBal = getBalance(from);
-            double toBal = getBalance(to);
-            updateBalance(from, fromBal - amt);
-            updateBalance(to, toBal + amt);
+        public static boolean transfer(String from, String to, double amt) {
+            try (Connection c1 = DatabaseConnectionServer1.getConnection();
+                 Connection c2 = DatabaseConnectionServer2.getConnection()) {
+
+                // Kiểm tra từ server1
+                PreparedStatement psCheckFrom = c1.prepareStatement("SELECT balance FROM users WHERE username=?");
+                psCheckFrom.setString(1, from);
+                ResultSet rsFrom = psCheckFrom.executeQuery();
+                if (!rsFrom.next()) return false; // người gửi không tồn tại
+                double fromBal = rsFrom.getDouble("balance");
+                if (fromBal < amt) return false; // không đủ tiền
+
+                PreparedStatement psCheckTo = c1.prepareStatement("SELECT balance FROM users WHERE username=?");
+                psCheckTo.setString(1, to);
+                ResultSet rsTo = psCheckTo.executeQuery();
+                if (!rsTo.next()) return false; // người nhận không tồn tại
+
+                // Transaction atomic trên server1
+                c1.setAutoCommit(false);
+                PreparedStatement psFrom = c1.prepareStatement("UPDATE users SET balance=? WHERE username=?");
+                psFrom.setDouble(1, fromBal - amt);
+                psFrom.setString(2, from);
+                psFrom.executeUpdate();
+
+                double toBal = rsTo.getDouble("balance");
+                PreparedStatement psTo = c1.prepareStatement("UPDATE users SET balance=? WHERE username=?");
+                psTo.setDouble(1, toBal + amt);
+                psTo.setString(2, to);
+                psTo.executeUpdate();
+                c1.commit();
+                c1.setAutoCommit(true);
+
+                // Đồng bộ sang server2
+                updateBalance(to, toBal + amt);
+                updateBalance(from, fromBal - amt);
+
+                return true;
+            } catch (Exception e) {
+                e.printStackTrace();
+                return false;
+            }
         }
 
         public static void setLoginStatus(String username, int status) {
@@ -156,6 +194,27 @@
                 if (rs.next()) return rs.getDouble("balance");
             } catch (Exception ignored) {}
             return 0;
+        }
+
+        public static boolean exists(String username) {
+            try (Connection c1 = DatabaseConnectionServer1.getConnection()) {
+                PreparedStatement ps = c1.prepareStatement("SELECT 1 FROM users WHERE username=?");
+                ps.setString(1, username);
+                ResultSet rs = ps.executeQuery();
+                return rs.next();
+            } catch (Exception e) { return false; }
+        }
+
+        public static List<String> getAllUsers() {
+            List<String> list = new ArrayList<>();
+            try (Connection c1 = DatabaseConnectionServer1.getConnection()) {
+                PreparedStatement ps = c1.prepareStatement("SELECT username FROM users");
+                ResultSet rs = ps.executeQuery();
+                while (rs.next()) list.add(rs.getString("username"));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return list;
         }
 
 

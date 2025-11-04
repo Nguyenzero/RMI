@@ -88,11 +88,30 @@ public class BankingController {
             lblBalance.setText(balance);
 
             lblStatus.setText("✅ Đăng nhập thành công!");
+
+            // ✅ THÊM DÒNG NÀY: Load danh sách tài khoản nhận
+            loadTargetAccounts();
         } else {
             lblStatus.setText("❌ Sai tài khoản hoặc mật khẩu");
         }
     }
 
+    @FXML
+    public void loadTargetAccounts() {
+        if (!client.isConnected()) return;
+
+        String response = client.sendCommand("LIST_USERS"); // gọi server lấy danh sách tài khoản
+        if (response.startsWith("USERS")) {
+            String usersStr = response.substring(6); // bỏ "USERS "
+            String[] users = usersStr.split(",");
+            cbTargetAccount.getItems().clear();
+            for (String u : users) {
+                if (!u.equals(currentUser)) { // không hiển thị tài khoản của chính mình
+                    cbTargetAccount.getItems().add(u);
+                }
+            }
+        }
+    }
 
     // 🧾 Đăng ký
     @FXML
@@ -129,7 +148,7 @@ public class BankingController {
     @FXML
     public void onTransfer() {
         if (!client.isConnected()) {
-            lblStatus.setText("⚠️ Chưa kết nối!");
+            lblStatus.setText("⚠️ Chưa kết nối server!");
             return;
         }
 
@@ -137,15 +156,31 @@ public class BankingController {
         String to = cbTargetAccount.getValue();
         String amount = txtAmount.getText().trim();
 
+        if (to == null || to.isEmpty()) {
+            lblStatus.setText("⚠️ Vui lòng chọn tài khoản nhận!");
+            return;
+        }
+
+        if (amount.isEmpty()) {
+            lblStatus.setText("⚠️ Vui lòng nhập số tiền!");
+            return;
+        }
+
         String res = client.sendCommand("TRANSFER " + user + " " + to + " " + amount);
 
         if (res.startsWith("BAL")) {
-            lblBalance.setText(res.split(" ")[1] + " ₫");
+            lblBalance.setText(String.format("%.2f ₫", Double.parseDouble(res.split(" ")[1])));
             lblStatus.setText("✅ Chuyển tiền thành công!");
-        } else {
+        } else if (res.equals("FAIL_FUNDS")) {
             lblStatus.setText("❌ Không đủ tiền!");
+        } else if (res.equals("FAIL_RECEIVER")) {
+            lblStatus.setText("❌ Tài khoản nhận không tồn tại!");
+        } else {
+            lblStatus.setText("❌ Lỗi giao dịch!");
         }
     }
+
+
 
 
     // 🚪 Đăng xuất
@@ -172,5 +207,7 @@ public class BankingController {
             lblStatus.setText("❌ Lỗi khi đăng xuất!");
         }
     }
+
+
 
 }

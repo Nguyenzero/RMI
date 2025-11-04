@@ -12,92 +12,107 @@
 
     <!-- 🔹 Thanh trên cùng -->
     <top>
-        <HBox alignment="CENTER_LEFT" spacing="10" style="-fx-background-color: #2563eb;">
+        <HBox alignment="CENTER_LEFT" spacing="10" style="-fx-background-color: #1e40af;">
             <padding>
-                <Insets top="10" bottom="10" left="15" right="15"/>
+                <Insets top="10" bottom="10" left="20" right="20"/>
             </padding>
 
+            <!-- Logo + Tiêu đề -->
             <Label text="🏦 BANKING SYSTEM"
                    style="-fx-text-fill: white; -fx-font-size: 18px; -fx-font-weight: bold;"/>
 
             <Pane HBox.hgrow="ALWAYS"/>
 
-            <TextField fx:id="txtServerIP" prefWidth="140" text="192.168.1.101"
-                       promptText="Địa chỉ IP Server"
-                       style="-fx-background-radius: 8; -fx-background-color: white; -fx-padding: 6;"/>
+            <!-- Ô nhập IP & cổng -->
+            <HBox spacing="5" alignment="CENTER">
+                <TextField fx:id="txtServerIP" prefWidth="140" text="192.168.1.101"
+                           promptText="Địa chỉ IP Server"
+                           style="-fx-background-radius: 6; -fx-background-color: white; -fx-padding: 6;"/>
+                <TextField fx:id="txtPort" prefWidth="80" text="5000"
+                           promptText="Cổng"
+                           style="-fx-background-radius: 6; -fx-background-color: white; -fx-padding: 6;"/>
+                <Button text="Kết nối" onAction="#onConnectServer"
+                        style="-fx-background-color: #facc15; -fx-text-fill: black; -fx-font-weight: bold; -fx-background-radius: 6;"/>
+            </HBox>
 
-            <TextField fx:id="txtPort" prefWidth="80" text="5000"
-                       promptText="Cổng"
-                       style="-fx-background-radius: 8; -fx-background-color: white; -fx-padding: 6;"/>
-
-            <Button text="Kết nối" onAction="#onConnectServer"
-                    style="-fx-background-color: #facc15; -fx-text-fill: black; -fx-background-radius: 8;"/>
-
-            <TextField fx:id="txtUsername" promptText="Tên đăng nhập"
-                       style="-fx-background-radius: 8; -fx-background-color: white; -fx-padding: 6;"/>
-            <PasswordField fx:id="txtPassword" promptText="Mật khẩu"
-                           style="-fx-background-radius: 8; -fx-background-color: white; -fx-padding: 6;"/>
-
-            <Button text="Đăng nhập" onAction="#onLogin"
-                    style="-fx-background-color: #10b981; -fx-text-fill: white; -fx-background-radius: 8;"/>
-            <Button text="Đăng ký" onAction="#onRegister"
-                    style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-background-radius: 8;"/>
-            <Button text="Đăng xuất" onAction="#onLogout"
-                    style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-background-radius: 8;"/>
-
+            <!-- Ô đăng nhập -->
+            <HBox spacing="5" alignment="CENTER_RIGHT">
+                <TextField fx:id="txtUsername" promptText="Tên đăng nhập"
+                           prefWidth="130"
+                           style="-fx-background-radius: 6; -fx-background-color: white; -fx-padding: 6;"/>
+                <PasswordField fx:id="txtPassword" promptText="Mật khẩu"
+                               prefWidth="130"
+                               style="-fx-background-radius: 6; -fx-background-color: white; -fx-padding: 6;"/>
+                <Button text="Đăng nhập" onAction="#onLogin"
+                        style="-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6;"/>
+                <Button text="Đăng ký" onAction="#onRegister"
+                        style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6;"/>
+                <Button text="Đăng xuất" onAction="#onLogout"
+                        style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6;"/>
+            </HBox>
         </HBox>
     </top>
 
-    <!-- 🔹 Trung tâm: giao diện chính -->
+    <!-- 🔹 Trung tâm -->
     <center>
-        <VBox alignment="CENTER" spacing="20" style="-fx-padding: 40;">
-            <StackPane style="-fx-background-color: white; -fx-background-radius: 16; -fx-padding: 30;">
+        <VBox alignment="CENTER" spacing="25" style="-fx-padding: 40;">
+            <StackPane style="-fx-background-color: white; -fx-background-radius: 20; -fx-padding: 35;">
                 <effect>
-                    <DropShadow radius="10" color="#b0bec5" offsetX="0" offsetY="4"/>
+                    <DropShadow radius="12" color="#b0bec5" offsetX="0" offsetY="4"/>
                 </effect>
 
-                <VBox alignment="CENTER" spacing="25">
+                <VBox alignment="CENTER" spacing="25" prefWidth="500">
 
-                    <!-- Tiêu đề -->
+                    <!-- Tiêu đề chính -->
                     <Label text="👤 THÔNG TIN TÀI KHOẢN"
                            style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #1e293b;"/>
 
                     <!-- Thông tin tài khoản -->
-                    <VBox fx:id="accountInfoPane" spacing="10" visible="false">
-                        <Label text="Mã tài khoản:"/>
-                        <Label fx:id="lblAccountNumber"/>
-                        <Label text="Số dư:"/>
-                        <Label fx:id="lblBalance"/>
-                    </VBox>
+                    <GridPane fx:id="accountInfoPane" hgap="10" vgap="10" visible="false">
+                        <columnConstraints>
+                            <ColumnConstraints halignment="RIGHT" prefWidth="120"/>
+                            <ColumnConstraints halignment="LEFT" prefWidth="200"/>
+                        </columnConstraints>
+                        <rowConstraints>
+                            <RowConstraints minHeight="25"/>
+                            <RowConstraints minHeight="25"/>
+                        </rowConstraints>
 
+                        <Label text="Mã tài khoản:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                        <Label fx:id="lblAccountNumber" GridPane.rowIndex="0" GridPane.columnIndex="1" style="-fx-font-weight: bold;"/>
+
+                        <Label text="Số dư:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                        <Label fx:id="lblBalance" GridPane.rowIndex="1" GridPane.columnIndex="1" style="-fx-font-weight: bold; -fx-text-fill: #22c55e;"/>
+                    </GridPane>
 
                     <Separator prefWidth="400"/>
 
                     <!-- Thao tác giao dịch -->
-                    <VBox alignment="CENTER" spacing="10">
+                    <VBox alignment="CENTER" spacing="15">
                         <Label text="💸 THAO TÁC GIAO DỊCH"
                                style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #1e293b;"/>
 
                         <ComboBox fx:id="cbTargetAccount" promptText="Chọn tài khoản nhận"
-                                  style="-fx-background-radius: 8; -fx-padding: 6;" prefWidth="250"/>
+                                  style="-fx-background-radius: 6; -fx-padding: 6;" prefWidth="260"/>
+
                         <TextField fx:id="txtAmount" promptText="Nhập số tiền"
-                                   style="-fx-background-radius: 8; -fx-padding: 6;" prefWidth="250"/>
+                                   style="-fx-background-radius: 6; -fx-padding: 6;" prefWidth="260"/>
 
                         <HBox alignment="CENTER" spacing="15">
                             <Button text="Chuyển tiền" onAction="#onTransfer"
-                                    style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-background-radius: 8;"/>
+                                    style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6;"/>
                             <Button text="Nạp tiền" onAction="#onDeposit"
-                                    style="-fx-background-color: #22c55e; -fx-text-fill: white; -fx-background-radius: 8;"/>
+                                    style="-fx-background-color: #22c55e; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6;"/>
                             <Button text="Rút tiền" onAction="#onWithdraw"
-                                    style="-fx-background-color: #f97316; -fx-text-fill: white; -fx-background-radius: 8;"/>
+                                    style="-fx-background-color: #f97316; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6;"/>
                         </HBox>
 
-                        <Label fx:id="lblStatus" textFill="red" style="-fx-font-weight: bold;"/>
+                        <Label fx:id="lblStatus" textFill="red"
+                               style="-fx-font-weight: bold; -fx-font-size: 13px;"/>
                     </VBox>
                 </VBox>
             </StackPane>
         </VBox>
     </center>
-
 
 </BorderPane>

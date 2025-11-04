@@ -8,7 +8,7 @@ import java.util.*;
 public class Server2 {
     private static final int PORT = 5001;
     private static final int SYNC_PORT = 12346;
-    private static final String SYNC_SERVER_IP = "192.168.1.102";
+    private static final String SYNC_SERVER_IP = "192.168.23.101";
     private static final int SYNC_SERVER_PORT = 12345;
 
     public static void main(String[] args) {
@@ -81,21 +81,39 @@ public class Server2 {
                 }
                 case "TRANSFER" -> {
                     double amt = Double.parseDouble(p[3]);
-                    double bal = UserDAO.getBalance(p[1]);
+
+                    if (!UserDAO.exists(p[2])) {
+                        out.println("FAIL_RECEIVER");
+                        break;
+                    }
+
+                    double bal = UserDAO.getBalance(p[1], "Server2");
                     if (bal < amt) {
                         out.println("FAIL_FUNDS");
-                        return;
+                        break;
                     }
-                    UserDAO.updateBalance(p[1], bal - amt);
-                    UserDAO.updateBalance(p[2], UserDAO.getBalance(p[2]) + amt);
+
+                    UserDAO.transfer(p[1], p[2], amt);
                     out.println("BAL " + (bal - amt));
                     syncToServer("TRANSFER " + p[1] + " " + p[2] + " " + amt);
                 }
+
                 case "LOGOUT" -> {
                     UserDAO.setLoginStatus(p[1], 0); // reset local
                     out.println("OK");
                     syncToServer("LOGOUT " + p[1]); // sync cho server kia
                 }
+
+                case "LIST_USERS" -> {
+                    StringBuilder sb = new StringBuilder("USERS ");
+                    List<String> allUsers = UserDAO.getAllUsers(); // cần viết thêm trong UserDAO
+                    for (String u : allUsers) {
+                        sb.append(u).append(",");
+                    }
+                    if (sb.charAt(sb.length() - 1) == ',') sb.deleteCharAt(sb.length() - 1);
+                    out.println(sb.toString());
+                }
+
 
                 default -> out.println("INVALID");
             }
