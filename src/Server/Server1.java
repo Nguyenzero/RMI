@@ -8,7 +8,7 @@ import java.util.*;
 public class Server1 {
     private static final int PORT = 5000;
     private static final int SYNC_PORT = 12345;
-    private static final String SYNC_SERVER_IP = "192.168.23.101";
+    private static final String SYNC_SERVER_IP = "192.168.1.100";
     private static final int SYNC_SERVER_PORT = 12346;
 
     public static void main(String[] args) {

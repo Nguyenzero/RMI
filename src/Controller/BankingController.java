@@ -7,6 +7,10 @@ import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
+import java.text.NumberFormat;
+import java.text.ParseException;
+import java.util.Locale;
+
 public class BankingController {
 
     @FXML private TextField txtServerIP, txtPort, txtUsername, txtPassword, txtAmount;
@@ -15,18 +19,33 @@ public class BankingController {
     @FXML private TableView<?> tblTransactions;
     @FXML private VBox accountInfoPane; // VBox chứa lblAccountNumber và lblBalance
 
-
-
     private String currentUser = null;
-
-
     private BankingClient client = new BankingClient();
+    private final NumberFormat vndFormat = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
 
     @FXML
     public void initialize() {
         lblStatus.setText("💬 Chưa kết nối server.");
         accountInfoPane.setVisible(false);
 
+        // 🎯 Tự động định dạng VND khi nhập số tiền
+        txtAmount.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal.isEmpty()) return;
+
+            // Xóa mọi ký tự không phải số
+            String numeric = newVal.replaceAll("[^\\d]", "");
+
+            if (numeric.isEmpty()) {
+                txtAmount.clear();
+                return;
+            }
+
+            try {
+                double amount = Double.parseDouble(numeric);
+                txtAmount.setText(vndFormat.format(amount));
+                txtAmount.positionCaret(txtAmount.getText().length());
+            } catch (NumberFormatException ignored) {}
+        });
 
         Platform.runLater(() -> {
             Stage stage = (Stage) lblStatus.getScene().getWindow();
@@ -37,8 +56,6 @@ public class BankingController {
                 }
             });
         });
-
-
     }
 
     // ⚙️ Kết nối tới server
@@ -85,11 +102,9 @@ public class BankingController {
 
             accountInfoPane.setVisible(true);
             lblAccountNumber.setText(username);
-            lblBalance.setText(balance);
+            lblBalance.setText(formatVND(Double.parseDouble(balance)));
 
             lblStatus.setText("✅ Đăng nhập thành công!");
-
-            // ✅ THÊM DÒNG NÀY: Load danh sách tài khoản nhận
             loadTargetAccounts();
         } else {
             lblStatus.setText("❌ Sai tài khoản hoặc mật khẩu");
@@ -100,15 +115,13 @@ public class BankingController {
     public void loadTargetAccounts() {
         if (!client.isConnected()) return;
 
-        String response = client.sendCommand("LIST_USERS"); // gọi server lấy danh sách tài khoản
+        String response = client.sendCommand("LIST_USERS");
         if (response.startsWith("USERS")) {
-            String usersStr = response.substring(6); // bỏ "USERS "
+            String usersStr = response.substring(6);
             String[] users = usersStr.split(",");
             cbTargetAccount.getItems().clear();
             for (String u : users) {
-                if (!u.equals(currentUser)) { // không hiển thị tài khoản của chính mình
-                    cbTargetAccount.getItems().add(u);
-                }
+                if (!u.equals(currentUser)) cbTargetAccount.getItems().add(u);
             }
         }
     }
@@ -135,53 +148,72 @@ public class BankingController {
     // 💰 Nạp tiền
     @FXML
     public void onDeposit() {
-        lblStatus.setText(client.sendCommand("DEPOSIT " + txtUsername.getText().trim() + " " + txtAmount.getText().trim()));
+        handleTransaction("DEPOSIT");
     }
 
-    // 🏧 Rút tiền
     @FXML
     public void onWithdraw() {
-        lblStatus.setText(client.sendCommand("WITHDRAW " + txtUsername.getText().trim() + " " + txtAmount.getText().trim()));
+        handleTransaction("WITHDRAW");
     }
 
-    // 🔁 Chuyển tiền
     @FXML
     public void onTransfer() {
-        if (!client.isConnected()) {
-            lblStatus.setText("⚠️ Chưa kết nối server!");
+        if (currentUser == null) {
+            lblStatus.setText("⚠️ Vui lòng đăng nhập trước.");
             return;
         }
 
-        String user = txtUsername.getText().trim();
-        String to = cbTargetAccount.getValue();
-        String amount = txtAmount.getText().trim();
-
-        if (to == null || to.isEmpty()) {
+        String target = cbTargetAccount.getValue();
+        if (target == null || target.isEmpty()) {
             lblStatus.setText("⚠️ Vui lòng chọn tài khoản nhận!");
             return;
         }
 
-        if (amount.isEmpty()) {
-            lblStatus.setText("⚠️ Vui lòng nhập số tiền!");
+        double amount = parseVND(txtAmount.getText());
+        if (amount <= 0) {
+            lblStatus.setText("⚠️ Số tiền không hợp lệ!");
             return;
         }
 
-        String res = client.sendCommand("TRANSFER " + user + " " + to + " " + amount);
+        String response = client.sendCommand("TRANSFER " + currentUser + " " + target + " " + amount);
 
-        if (res.startsWith("BAL")) {
-            lblBalance.setText(String.format("%.2f ₫", Double.parseDouble(res.split(" ")[1])));
-            lblStatus.setText("✅ Chuyển tiền thành công!");
-        } else if (res.equals("FAIL_FUNDS")) {
-            lblStatus.setText("❌ Không đủ tiền!");
-        } else if (res.equals("FAIL_RECEIVER")) {
+        if (response.equals("FAIL_FUNDS")) {
+            lblStatus.setText("❌ Số dư không đủ để chuyển!");
+        } else if (response.equals("FAIL_RECEIVER")) {
             lblStatus.setText("❌ Tài khoản nhận không tồn tại!");
+        } else if (response.startsWith("BAL")) {
+            double newBal = Double.parseDouble(response.split(" ")[1]);
+            lblBalance.setText(formatVND(newBal));
+            lblStatus.setText("✅ Chuyển tiền thành công!");
         } else {
-            lblStatus.setText("❌ Lỗi giao dịch!");
+            lblStatus.setText("❌ Lỗi khi chuyển tiền!");
         }
     }
 
+    private void handleTransaction(String type) {
+        if (currentUser == null) {
+            lblStatus.setText("⚠️ Vui lòng đăng nhập trước.");
+            return;
+        }
 
+        double amount = parseVND(txtAmount.getText());
+        if (amount <= 0) {
+            lblStatus.setText("⚠️ Số tiền không hợp lệ!");
+            return;
+        }
 
+        String response = client.sendCommand(type + " " + currentUser + " " + amount);
+
+        if (response.equals("FAIL_FUNDS")) {
+            lblStatus.setText("❌ Số dư không đủ!");
+        } else if (response.startsWith("BAL")) {
+            double newBal = Double.parseDouble(response.split(" ")[1]);
+            lblBalance.setText(formatVND(newBal));
+            lblStatus.setText(type.equals("DEPOSIT") ? "✅ Nạp tiền thành công!" : "✅ Rút tiền thành công!");
+        } else {
+            lblStatus.setText("❌ Lỗi khi thực hiện giao dịch!");
+        }
+    }
 
     // 🚪 Đăng xuất
     @FXML
@@ -194,13 +226,10 @@ public class BankingController {
                 return;
             }
 
-            // Gửi lệnh LOGOUT tới server
             client.sendCommand("LOGOUT " + user);
 
             lblStatus.setText("✅ Đã đăng xuất!");
             accountInfoPane.setVisible(false);
-
-            // Không xoá username trước khi gửi logout — phải gửi xong mới xoá
             txtPassword.clear();
 
         } catch (Exception e) {
@@ -208,6 +237,20 @@ public class BankingController {
         }
     }
 
+    private String formatVND(double amount) {
+        return vndFormat.format(amount);
+    }
 
-
+    private double parseVND(String text) {
+        try {
+            if (text == null || text.isEmpty()) return 0;
+            return vndFormat.parse(text).doubleValue();
+        } catch (ParseException e) {
+            try {
+                return Double.parseDouble(text.replaceAll("[^\\d.]", ""));
+            } catch (Exception ex) {
+                return 0;
+            }
+        }
+    }
 }

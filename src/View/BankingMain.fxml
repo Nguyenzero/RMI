@@ -62,14 +62,23 @@
                     <Label text="👤 THÔNG TIN TÀI KHOẢN"
                            style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #1e293b;"/>
 
-                    <!-- Thông tin tài khoản -->
-                    <VBox fx:id="accountInfoPane" spacing="10" visible="false">
-                        <Label text="Mã tài khoản:"/>
-                        <Label fx:id="lblAccountNumber"/>
-                        <Label text="Số dư:"/>
-                        <Label fx:id="lblBalance"/>
-                    </VBox>
+                    <!-- ✅ Thông tin tài khoản — căn giữa gọn gàng -->
+                    <VBox fx:id="accountInfoPane" alignment="CENTER" spacing="10" visible="false"
+                          style="-fx-background-color: #f8fafc; -fx-background-radius: 10; -fx-padding: 15;">
 
+                        <!-- Chủ tài khoản -->
+                        <HBox alignment="CENTER" spacing="6">
+                            <Label text="Chủ tài khoản:" style="-fx-text-fill: #334155; -fx-font-weight: bold;"/>
+                            <Label fx:id="lblAccountNumber" style="-fx-font-size: 14px; -fx-text-fill: #1e3a8a;"/>
+                        </HBox>
+
+                        <!-- Số dư -->
+                        <HBox alignment="CENTER" spacing="6">
+                            <Label text="Số dư:" style="-fx-text-fill: #334155; -fx-font-weight: bold;"/>
+                            <Label fx:id="lblBalance" style="-fx-font-size: 16px; -fx-text-fill: #16a34a; -fx-font-weight: bold;"/>
+                        </HBox>
+
+                    </VBox>
 
                     <Separator prefWidth="400"/>
 
@@ -98,6 +107,5 @@
             </StackPane>
         </VBox>
     </center>
-
 
 </BorderPane>

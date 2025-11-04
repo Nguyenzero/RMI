@@ -1,4 +1,3 @@
-
 package Client;
 
 import java.io.*;
@@ -35,13 +34,22 @@ public class BankingClient {
         }
     }
 
-    public String sendCommand(String cmd) {
+    /**
+     * Gửi lệnh và nhận phản hồi từ server
+     */
+    public synchronized String sendCommand(String cmd) {
         try {
             if (!connected) return "⚠️ Chưa kết nối server!";
             out.println(cmd);
-            return in.readLine();
+            String response = in.readLine();
+            if (response == null) {
+                connected = false;
+                return "❌ Mất kết nối với server!";
+            }
+            return response;
         } catch (IOException e) {
-            return "❌ Lỗi gửi dữ liệu!";
+            connected = false;
+            return "❌ Lỗi gửi hoặc nhận dữ liệu!";
         }
     }
 
@@ -57,6 +65,4 @@ public class BankingClient {
 
         System.out.println("🔌 Đã ngắt kết nối server.");
     }
-
-
 }
