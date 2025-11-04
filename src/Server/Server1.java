@@ -54,7 +54,8 @@ public class Server1 {
                     case "LOGIN" -> {
                         if (UserDAO.isLoggedIn(p[1])) {
                             out.println("FAIL_BUSY");
-                            break;
+                            break; // giữ thread sống và lắng nghe lệnh mới
+
                         }
                         if (UserDAO.login(p[1], p[2], "Server1")) {
                             double balance = UserDAO.getBalance(p[1], "Server1");

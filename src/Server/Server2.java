@@ -52,7 +52,7 @@ public class Server2 {
                 case "LOGIN" -> {
                     if (UserDAO.isLoggedIn(p[1])) {
                         out.println("FAIL_BUSY");
-                        return;
+                        break;
                     }
                     if (UserDAO.login(p[1], p[2], "Server2")) {
                         double balance = UserDAO.getBalance(p[1], "Server2");

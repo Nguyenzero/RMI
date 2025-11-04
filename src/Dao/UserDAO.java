@@ -125,14 +125,24 @@
 
 
         public static boolean isLoggedIn(String username) {
-            try (Connection c1 = DatabaseConnectionServer1.getConnection()) {
-                PreparedStatement ps = c1.prepareStatement("SELECT is_logged_in FROM users WHERE username=?");
-                ps.setString(1, username);
-                ResultSet rs = ps.executeQuery();
-                if (rs.next()) return rs.getInt("is_logged_in") == 1;
+            try (Connection c1 = DatabaseConnectionServer1.getConnection();
+                 Connection c2 = DatabaseConnectionServer2.getConnection()) {
+
+                PreparedStatement ps1 = c1.prepareStatement("SELECT is_logged_in FROM users WHERE username=?");
+                ps1.setString(1, username);
+                ResultSet rs1 = ps1.executeQuery();
+                if (rs1.next() && rs1.getInt("is_logged_in") == 1) return true;
+
+                PreparedStatement ps2 = c2.prepareStatement("SELECT is_logged_in FROM users WHERE username=?");
+                ps2.setString(1, username);
+                ResultSet rs2 = ps2.executeQuery();
+                if (rs2.next() && rs2.getInt("is_logged_in") == 1) return true;
+
             } catch (Exception ignored) {}
+
             return false;
         }
+
 
         // Lấy balance từ server tương ứng
         public static double getBalance(String username, String server) {
