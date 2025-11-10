@@ -10,6 +10,8 @@ public class Server1 {
     private static final int SYNC_PORT = 12345;
     private static final String SYNC_SERVER_IP = "192.168.1.101";
     private static final int SYNC_SERVER_PORT = 12346;
+    private static final List<PrintWriter> clients = Collections.synchronizedList(new ArrayList<>());
+
 
     public static void main(String[] args) {
         try {
@@ -35,8 +37,10 @@ public class Server1 {
         }
     }
     private static void handleClient(Socket socket) {
-        try (BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-             PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
+        PrintWriter out = null;
+        try (BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+            out = new PrintWriter(socket.getOutputStream(), true);
+            clients.add(out); // 🌟 thêm client vào danh sách
 
             while (true) {
                 String line = in.readLine();
@@ -54,8 +58,7 @@ public class Server1 {
                     case "LOGIN" -> {
                         if (UserDAO.isLoggedIn(p[1])) {
                             out.println("FAIL_BUSY");
-                            break; // giữ thread sống và lắng nghe lệnh mới
-
+                            break;
                         }
                         if (UserDAO.login(p[1], p[2], "Server1")) {
                             double balance = UserDAO.getBalance(p[1], "Server1");
@@ -69,6 +72,7 @@ public class Server1 {
                         double newBal = UserDAO.getBalance(p[1], "Server1") + amt;
                         UserDAO.updateBalance(p[1], newBal);
                         out.println("BAL " + newBal);
+                        broadcastBalance(p[1], newBal); // 🌟 broadcast realtime
                         syncToServer("UPDATE " + p[1] + " " + newBal);
                     }
 
@@ -82,6 +86,7 @@ public class Server1 {
                         double newBal = bal - amt;
                         UserDAO.updateBalance(p[1], newBal);
                         out.println("BAL " + newBal);
+                        broadcastBalance(p[1], newBal); // 🌟 broadcast realtime
                         syncToServer("UPDATE " + p[1] + " " + newBal);
                     }
 
@@ -93,7 +98,7 @@ public class Server1 {
                             break;
                         }
 
-                        double bal = UserDAO.getBalance(p[1], "Server1"); // hoặc Server2
+                        double bal = UserDAO.getBalance(p[1], "Server1");
                         if (bal < amt) {
                             out.println("FAIL_FUNDS");
                             break;
@@ -104,34 +109,34 @@ public class Server1 {
                         UserDAO.updateBalance(p[1], newBalSender);
 
                         // Cộng tiền người nhận
-                        double balReceiver = UserDAO.getBalance(p[2], "Server1"); // lấy balance hiện tại
+                        double balReceiver = UserDAO.getBalance(p[2], "Server1");
                         double newBalReceiver = balReceiver + amt;
                         UserDAO.updateBalance(p[2], newBalReceiver);
 
                         out.println("BAL " + newBalSender);
+
+                        // 🌟 broadcast cả sender và receiver
+                        broadcastBalance(p[1], newBalSender);
+                        broadcastBalance(p[2], newBalReceiver);
 
                         // Đồng bộ sang server kia
                         syncToServer("UPDATE " + p[1] + " " + newBalSender);
                         syncToServer("UPDATE " + p[2] + " " + newBalReceiver);
                     }
 
-
                     case "LOGOUT" -> {
                         UserDAO.setLoginStatus(p[1], 0);
                         out.println("OK");
                         syncToServer("LOGOUT " + p[1]);
                     }
+
                     case "LIST_USERS" -> {
                         StringBuilder sb = new StringBuilder("USERS ");
-                        List<String> allUsers = UserDAO.getAllUsers(); // cần viết thêm trong UserDAO
-                        for (String u : allUsers) {
-                            sb.append(u).append(",");
-                        }
+                        List<String> allUsers = UserDAO.getAllUsers();
+                        for (String u : allUsers) sb.append(u).append(",");
                         if (sb.charAt(sb.length() - 1) == ',') sb.deleteCharAt(sb.length() - 1);
                         out.println(sb.toString());
                     }
-
-
 
                     default -> out.println("INVALID");
                 }
@@ -139,8 +144,21 @@ public class Server1 {
 
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            if (out != null) clients.remove(out); // 🌟 xóa client khi ngắt kết nối
         }
     }
+
+    // 🌟 Thêm phương thức broadcast
+    private static void broadcastBalance(String username, double balance) {
+        String msg = "UPDATE_BAL " + username + " " + balance;
+        synchronized (clients) {
+            for (PrintWriter pw : clients) {
+                pw.println(msg);
+            }
+        }
+    }
+
 
 
     private static void syncToServer(String msg) {

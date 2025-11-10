@@ -56,6 +56,18 @@ public class BankingController {
                 }
             });
         });
+
+        client.setOnServerMessage(msg -> {
+            if (msg.startsWith("UPDATE_BAL")) { // server gửi dạng "UPDATE_BAL <username> <newBalance>"
+                String[] parts = msg.split(" ");
+                String username = parts[1];
+                double balance = Double.parseDouble(parts[2]);
+
+                if (currentUser != null && currentUser.equals(username)) {
+                    Platform.runLater(() -> lblBalance.setText(formatVND(balance)));
+                }
+            }
+        });
     }
 
     // ⚙️ Kết nối tới server

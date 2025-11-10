@@ -2,6 +2,9 @@ package Client;
 
 import java.io.*;
 import java.net.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.function.Consumer;
 
 public class BankingClient {
     private Socket socket;
@@ -9,47 +12,66 @@ public class BankingClient {
     private PrintWriter out;
     private boolean connected = false;
 
+    private Consumer<String> onServerMessage; // callback xử lý push
+    private final BlockingQueue<String> responseQueue = new LinkedBlockingQueue<>();
+
+    public void setOnServerMessage(Consumer<String> listener) {
+        this.onServerMessage = listener;
+    }
+
     public boolean isConnected() {
         return connected;
     }
 
     public boolean connect(String serverIP, int port) {
         try {
-            if (connected) {
-                System.out.println("✅ Đã kết nối trước đó, không cần kết nối lại!");
-                return true;
-            }
+            if (connected) return true;
 
             socket = new Socket(serverIP, port);
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out = new PrintWriter(socket.getOutputStream(), true);
             connected = true;
 
-            System.out.println("✅ Kết nối thành công tới " + serverIP + ":" + port);
+            // thread lắng nghe server push
+            new Thread(this::listenFromServer).start();
             return true;
         } catch (IOException e) {
-            System.out.println("❌ Không thể kết nối: " + e.getMessage());
             connected = false;
             return false;
         }
     }
 
-    /**
-     * Gửi lệnh và nhận phản hồi từ server
-     */
+    private void listenFromServer() {
+        try {
+            String line;
+            while ((line = in.readLine()) != null) {
+                // server gửi UPDATE_BAL -> gọi callback
+                if (line.startsWith("UPDATE_BAL")) {
+                    if (onServerMessage != null) {
+                        onServerMessage.accept(line);
+                    }
+                } else {
+                    // response lệnh -> thêm vào queue
+                    responseQueue.offer(line);
+                }
+            }
+        } catch (IOException e) {
+            connected = false;
+        }
+    }
+
+    // Gửi lệnh và chờ response
     public synchronized String sendCommand(String cmd) {
         try {
             if (!connected) return "⚠️ Chưa kết nối server!";
             out.println(cmd);
-            String response = in.readLine();
-            if (response == null) {
-                connected = false;
-                return "❌ Mất kết nối với server!";
-            }
+
+            // chờ response từ queue
+            String response = responseQueue.take(); // blocking nhưng chỉ lấy response
             return response;
-        } catch (IOException e) {
-            connected = false;
-            return "❌ Lỗi gửi hoặc nhận dữ liệu!";
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return "❌ Lỗi khi nhận dữ liệu!";
         }
     }
 
@@ -57,12 +79,6 @@ public class BankingClient {
         try {
             if (socket != null && !socket.isClosed()) socket.close();
         } catch (IOException ignored) {}
-
         connected = false;
-        socket = null;
-        in = null;
-        out = null;
-
-        System.out.println("🔌 Đã ngắt kết nối server.");
     }
 }
