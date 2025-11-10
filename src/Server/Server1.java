@@ -93,16 +93,28 @@ public class Server1 {
                             break;
                         }
 
-                        double bal = UserDAO.getBalance(p[1], "Server1");
+                        double bal = UserDAO.getBalance(p[1], "Server1"); // hoặc Server2
                         if (bal < amt) {
                             out.println("FAIL_FUNDS");
                             break;
                         }
 
-                        UserDAO.transfer(p[1], p[2], amt);
-                        out.println("BAL " + (bal - amt));
-                        syncToServer("TRANSFER " + p[1] + " " + p[2] + " " + amt);
+                        // Trừ tiền người gửi
+                        double newBalSender = bal - amt;
+                        UserDAO.updateBalance(p[1], newBalSender);
+
+                        // Cộng tiền người nhận
+                        double balReceiver = UserDAO.getBalance(p[2], "Server1"); // lấy balance hiện tại
+                        double newBalReceiver = balReceiver + amt;
+                        UserDAO.updateBalance(p[2], newBalReceiver);
+
+                        out.println("BAL " + newBalSender);
+
+                        // Đồng bộ sang server kia
+                        syncToServer("UPDATE " + p[1] + " " + newBalSender);
+                        syncToServer("UPDATE " + p[2] + " " + newBalReceiver);
                     }
+
 
                     case "LOGOUT" -> {
                         UserDAO.setLoginStatus(p[1], 0);

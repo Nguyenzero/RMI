@@ -93,41 +93,22 @@
             }
         }
 
+        // Không cần đồng bộ 2 server trong transfer
         public static boolean transfer(String from, String to, double amt) {
-            try (Connection c1 = DatabaseConnectionServer1.getConnection();
-                 Connection c2 = DatabaseConnectionServer2.getConnection()) {
+            try (Connection c = DatabaseConnectionServer1.getConnection()) {
+                // Trừ tiền người gửi
+                PreparedStatement ps1 = c.prepareStatement("UPDATE users SET balance=balance-? WHERE username=?");
+                ps1.setDouble(1, amt);
+                ps1.setString(2, from);
+                ps1.executeUpdate();
+                ps1.close();
 
-                // Kiểm tra từ server1
-                PreparedStatement psCheckFrom = c1.prepareStatement("SELECT balance FROM users WHERE username=?");
-                psCheckFrom.setString(1, from);
-                ResultSet rsFrom = psCheckFrom.executeQuery();
-                if (!rsFrom.next()) return false; // người gửi không tồn tại
-                double fromBal = rsFrom.getDouble("balance");
-                if (fromBal < amt) return false; // không đủ tiền
-
-                PreparedStatement psCheckTo = c1.prepareStatement("SELECT balance FROM users WHERE username=?");
-                psCheckTo.setString(1, to);
-                ResultSet rsTo = psCheckTo.executeQuery();
-                if (!rsTo.next()) return false; // người nhận không tồn tại
-
-                // Transaction atomic trên server1
-                c1.setAutoCommit(false);
-                PreparedStatement psFrom = c1.prepareStatement("UPDATE users SET balance=? WHERE username=?");
-                psFrom.setDouble(1, fromBal - amt);
-                psFrom.setString(2, from);
-                psFrom.executeUpdate();
-
-                double toBal = rsTo.getDouble("balance");
-                PreparedStatement psTo = c1.prepareStatement("UPDATE users SET balance=? WHERE username=?");
-                psTo.setDouble(1, toBal + amt);
-                psTo.setString(2, to);
-                psTo.executeUpdate();
-                c1.commit();
-                c1.setAutoCommit(true);
-
-                // Đồng bộ sang server2
-                updateBalance(to, toBal + amt);
-                updateBalance(from, fromBal - amt);
+                // Cộng tiền người nhận
+                PreparedStatement ps2 = c.prepareStatement("UPDATE users SET balance=balance+? WHERE username=?");
+                ps2.setDouble(1, amt);
+                ps2.setString(2, to);
+                ps2.executeUpdate();
+                ps2.close();
 
                 return true;
             } catch (Exception e) {
@@ -135,6 +116,7 @@
                 return false;
             }
         }
+
 
         public static void setLoginStatus(String username, int status) {
             try (Connection c1 = DatabaseConnectionServer1.getConnection();
