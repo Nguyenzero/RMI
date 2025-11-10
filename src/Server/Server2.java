@@ -8,7 +8,7 @@ import java.util.*;
 public class Server2 {
     private static final int PORT = 5001;
     private static final int SYNC_PORT = 12346;
-    private static final String SYNC_SERVER_IP = "192.168.1.100";
+    private static final String SYNC_SERVER_IP = "192.168.1.101";
     private static final int SYNC_SERVER_PORT = 12345;
 
     public static void main(String[] args) {
@@ -40,83 +40,83 @@ public class Server2 {
 
             while (true) {
                 String line = in.readLine();
-            if (line == null) return;
-            String[] p = line.split(" ");
-            String cmd = p[0].toUpperCase();
+                if (line == null) return;
+                String[] p = line.split(" ");
+                String cmd = p[0].toUpperCase();
 
-            switch (cmd) {
-                case "REGISTER" -> {
-                    if (UserDAO.register(p[1], p[2])) out.println("✅ Đăng ký thành công!");
-                    else out.println("❌ Tên tài khoản đã tồn tại!");
-                }
-                case "LOGIN" -> {
-                    if (UserDAO.isLoggedIn(p[1])) {
-                        out.println("FAIL_BUSY");
-                        break;
+                switch (cmd) {
+                    case "REGISTER" -> {
+                        if (UserDAO.register(p[1], p[2])) out.println("✅ Đăng ký thành công!");
+                        else out.println("❌ Tên tài khoản đã tồn tại!");
                     }
-                    if (UserDAO.login(p[1], p[2], "Server2")) {
-                        double balance = UserDAO.getBalance(p[1], "Server2");
-                        out.println("SUCCESS " + p[1] + " " + balance);
-                        syncToServer("LOGIN " + p[1]);
-                    } else out.println("FAIL");
-                }
-                case "DEPOSIT" -> {
-                    double amt = Double.parseDouble(p[2]);
-                    double newBal = UserDAO.getBalance(p[1]) + amt;
-                    UserDAO.updateBalance(p[1], newBal);
-                    out.println("BAL " + newBal);
-                    syncToServer("UPDATE " + p[1] + " " + newBal);
-                }
-                case "WITHDRAW" -> {
-                    double amt = Double.parseDouble(p[2]);
-                    double bal = UserDAO.getBalance(p[1]);
-                    if (bal < amt) {
-                        out.println("FAIL_FUNDS");
-                        return;
+                    case "LOGIN" -> {
+                        if (UserDAO.isLoggedIn(p[1])) {
+                            out.println("FAIL_BUSY");
+                            break;
+                        }
+                        if (UserDAO.login(p[1], p[2], "Server2")) {
+                            double balance = UserDAO.getBalance(p[1], "Server2");
+                            out.println("SUCCESS " + p[1] + " " + balance);
+                            syncToServer("LOGIN " + p[1]);
+                        } else out.println("FAIL");
                     }
-                    double newBal = bal - amt;
-                    UserDAO.updateBalance(p[1], newBal);
-                    out.println("BAL " + newBal);
-                    syncToServer("UPDATE " + p[1] + " " + newBal);
-                }
-                case "TRANSFER" -> {
-                    double amt = Double.parseDouble(p[3]);
+                    case "DEPOSIT" -> {
+                        double amt = Double.parseDouble(p[2]);
+                        double newBal = UserDAO.getBalance(p[1]) + amt;
+                        UserDAO.updateBalance(p[1], newBal);
+                        out.println("BAL " + newBal);
+                        syncToServer("UPDATE " + p[1] + " " + newBal);
+                    }
+                    case "WITHDRAW" -> {
+                        double amt = Double.parseDouble(p[2]);
+                        double bal = UserDAO.getBalance(p[1]);
+                        if (bal < amt) {
+                            out.println("FAIL_FUNDS");
+                            return;
+                        }
+                        double newBal = bal - amt;
+                        UserDAO.updateBalance(p[1], newBal);
+                        out.println("BAL " + newBal);
+                        syncToServer("UPDATE " + p[1] + " " + newBal);
+                    }
+                    case "TRANSFER" -> {
+                        double amt = Double.parseDouble(p[3]);
 
-                    if (!UserDAO.exists(p[2])) {
-                        out.println("FAIL_RECEIVER");
-                        break;
+                        if (!UserDAO.exists(p[2])) {
+                            out.println("FAIL_RECEIVER");
+                            break;
+                        }
+
+                        double bal = UserDAO.getBalance(p[1], "Server2");
+                        if (bal < amt) {
+                            out.println("FAIL_FUNDS");
+                            break;
+                        }
+
+                        UserDAO.transfer(p[1], p[2], amt);
+                        out.println("BAL " + (bal - amt));
+                        syncToServer("TRANSFER " + p[1] + " " + p[2] + " " + amt);
                     }
 
-                    double bal = UserDAO.getBalance(p[1], "Server2");
-                    if (bal < amt) {
-                        out.println("FAIL_FUNDS");
-                        break;
+                    case "LOGOUT" -> {
+                        UserDAO.setLoginStatus(p[1], 0); // reset local
+                        out.println("OK");
+                        syncToServer("LOGOUT " + p[1]); // sync cho server kia
                     }
 
-                    UserDAO.transfer(p[1], p[2], amt);
-                    out.println("BAL " + (bal - amt));
-                    syncToServer("TRANSFER " + p[1] + " " + p[2] + " " + amt);
-                }
-
-                case "LOGOUT" -> {
-                    UserDAO.setLoginStatus(p[1], 0); // reset local
-                    out.println("OK");
-                    syncToServer("LOGOUT " + p[1]); // sync cho server kia
-                }
-
-                case "LIST_USERS" -> {
-                    StringBuilder sb = new StringBuilder("USERS ");
-                    List<String> allUsers = UserDAO.getAllUsers(); // cần viết thêm trong UserDAO
-                    for (String u : allUsers) {
-                        sb.append(u).append(",");
+                    case "LIST_USERS" -> {
+                        StringBuilder sb = new StringBuilder("USERS ");
+                        List<String> allUsers = UserDAO.getAllUsers(); // cần viết thêm trong UserDAO
+                        for (String u : allUsers) {
+                            sb.append(u).append(",");
+                        }
+                        if (sb.charAt(sb.length() - 1) == ',') sb.deleteCharAt(sb.length() - 1);
+                        out.println(sb.toString());
                     }
-                    if (sb.charAt(sb.length() - 1) == ',') sb.deleteCharAt(sb.length() - 1);
-                    out.println(sb.toString());
+
+
+                    default -> out.println("INVALID");
                 }
-
-
-                default -> out.println("INVALID");
-            }
 
             }
 
